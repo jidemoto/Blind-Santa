@@ -11,10 +11,19 @@
             person.find('input').val('').each(function() {
                 var $this = $(this),
                     idAttr = $(this).attr('id'),
-                    nameAttr = $this.attr('name');
+                    nameAttr = $this.attr('name'),
+                    incrementedId = increment(idAttr),
+                    incrementedName = increment(nameAttr);
 
-                $this.attr('id', increment(idAttr));
-                $this.attr('name', increment(nameAttr));
+                $this.attr('id', incrementedId);
+                $this.attr('name', incrementedName);
+                if(idAttr.indexOf('name') === -1) {
+                    $this.attr('data-parsley-conditionally', '#' + incrementedId.replace("email", "name", "gi"));
+                } else {
+                    $this.attr('data-parsley-conditionally', '#' + incrementedId.replace("name", "email", "gi"));
+                }
+                $this.removeAttr('required');
+                $this.attr('data-parsley-validate-if-empty','data-parsley-validate-if-empty');
             });
             person.find('label').each(function() {
                 var $this = $(this),
@@ -23,6 +32,9 @@
             });
 
             lastPerson.after(person);
+
+            //Send the user to the name field of the newly added input (helps with keyboard-only flow)
+            $('.form-group:last input[name^="name"]').focus();
         };
     $('.add-button').on('click', addPerson);
 
@@ -44,6 +56,7 @@
         }).done(function() {
             $('.form-group').remove();
             $('.add-button').remove();
+            $('.captcha').remove();
             button.html('Success!  Emails should be arriving shortly');
         }).fail(function(jqXHR) {
             var response = JSON.parse(jqXHR.responseText);
@@ -59,3 +72,9 @@
         return false;
     });
 })();
+
+window.ParsleyValidator.addValidator('conditionally',
+    function(value, requirement) {
+        return $(requirement).val() !== '' ? value !== '' : true;
+    }, 32)
+    .addMessage('en', 'conditionally', 'This field should be filled if its partner is');
