@@ -23,69 +23,11 @@ var express = require('express'),
             }
         });
     },
-    
+
     jade = require('jade'),
-    router = express.Router();
-
-/* GET home page. */
-router.get('/', function(req, res) {
-    var recaptcha = new Recaptcha(RECAPTCHA_PUBLIC_KEY, RECAPTCHA_PRIVATE_KEY);
-
-    res.render('index', {
-        title: 'Blind Santa',
-        recaptcha_form: recaptcha.toHTML()
-    });
-});
-
-router.post('/santa', recaptcha_check, function(req, res) {
-    var number,
-        valid = _.pick(req.body, function(value, key) {
-            return (key.indexOf('name') === 0 && !isNaN(parseInt(key.substring(4), 10))
-                || (key.indexOf('email') === 0) && !isNaN(parseInt(key.substring(5), 10)));
-        }),
-        people = [],
-        santa,
-        available = [],
-        santas = [];
-
-    for(number = 1; number < 50; number++) {
-        if(_.has(valid, 'email' + number) && _.has(valid, 'name' + number)
-            && valid['name' + number] && valid['email' + number]
-            && valid['name' + number].trim() !== '' && valid['email' + number].trim() !== '') {
-            people.push({
-                name: valid['name' + number].trim(),
-                email: valid['email' + number].trim()
-            });
-        }
-    }
-
-    console.log(people);
-    if(people.length < 2) {
-        res.status(400).json({
-            failure: 'Not enough players'
-        })
-    } else {
-        //Pick each person's santa
-        for(number = 0; number < people.length; number++) {
-            available.push(number);
-        }
-        for(number = 0; number < people.length; number++) {
-            santa = _.random(available.length - 1);
-
-            while(available[santa] === number) {
-                //Retry if we somehow get ourselves in a bind
-                if(available.length === 1) {
-                    for(number = 0; number < people.length; number++) {
-                        available.push(number);
-                    }
-                    santas = [];
-                }
-                santa = _.random(available.length - 1);
-            }
-            santa = available.splice(santa, 1);
-            santas.push(santa[0]);
-        }
-
+    router = express.Router(),
+    emailPeoples = function(people, santas) {
+        var number;
         for(number = 0; number < people.length; number++) {
             console.log('Mapped ' + people[number].name + ' to ' + people[santas[number]].name);
             ses.sendEmail({
@@ -112,8 +54,106 @@ router.post('/santa', recaptcha_check, function(req, res) {
                 else    console.log(data);
             });
         }
+    };
+
+router.getValidParams = function(params) {
+    return _.pick(params, function(value, key) {
+        return (key.indexOf('name') === 0 && !isNaN(parseInt(key.substring(4), 10))
+            || (key.indexOf('email') === 0) && !isNaN(parseInt(key.substring(5), 10)))
+            || (key.indexOf('exclude') === 0 && !isNaN(parseInt(key.substring(7), 10)));
+    });
+};
+
+router.makePeopleList = function(params) {
+    var number,
+        people = [];
+    for(number = 1; number < 50; number++) {
+        if(_.has(params, 'email' + number) && _.has(params, 'name' + number)
+            && params['name' + number] && params['email' + number]
+            && params['name' + number].trim() !== '' && params['email' + number].trim() !== '') {
+            people.push({
+                id: number,
+                name: params['name' + number].trim(),
+                email: params['email' + number].trim(),
+                exclusions : _.has(params, 'exclude' + number) && typeof params['exclude' + number] !== 'undefined' ? params['exclude' + number].split(',') : []
+            });
+        }
+    }
+
+    return people;
+};
+
+/* GET home page. */
+router.get('/', function(req, res) {
+    var recaptcha = new Recaptcha(RECAPTCHA_PUBLIC_KEY, RECAPTCHA_PRIVATE_KEY);
+
+    res.render('index', {
+        title: 'Blind Santa',
+        recaptcha_form: recaptcha.toHTML()
+    });
+});
 
 
+
+router.post('/santa', recaptcha_check, function(req, res) {
+    var number,
+        valid = this.getValidParams(req.body),
+        people = this.makePeopleList(valid),
+        twoPersonCyclesAllowed = _.has(req.body, 'twoPersonCyclesAllowed') && people.length > 2
+            ? req.body['twoPersonCyclesAllowed'].toLowerCase() == 'true'
+            : true,
+        person,
+        assignee,
+        available = [],
+        edges = [],
+        locallyAvailable,
+        localSanta;
+
+    people.sort(function(a, b) {return a.exclusions.length - b.exclusions.length});
+
+    console.log(people);
+    if(people.length < 2) {
+        res.status(400).json({
+            failure: 'Not enough players'
+        })
+    } else {
+        //Pick each person's santa
+        for(number = 1; number <= people.length; number++) {
+            available.push(number);
+        }
+        for(number = 0; number < people.length; number++) {
+            person = people[number];
+            locallyAvailable = available.slice(0, available.length);
+
+            //Remove the user's self from the available listing
+            if(locallyAvailable.indexOf(person.id) != -1) {
+                locallyAvailable.splice(locallyAvailable.indexOf(person.id), 1);
+            }
+
+            //Remove items from the available array that match exclusions
+            for(var i = 0; i < person.exclusions.length; i++) {
+                if(locallyAvailable.indexOf(person.exclusions[i]) != -1) {
+                    locallyAvailable.splice(locallyAvailable.indexOf(person.exclusions[i]), 1);
+                }
+            }
+
+            if(locallyAvailable.length == 0) {
+                //TODO: Handle the error case where graph generation isn't possible
+            }
+
+            localSanta = _.random(locallyAvailable.length - 1);
+            assignee = available.splice(available.indexOf(locallyAvailable[localSanta]), 1);
+
+            edges.push({
+                from: person.id,
+                to: assignee[0]
+            });
+        }
+
+        people.sort(function(a, b) { return a.id - b.id;});
+        edges.sort(function(a, b) { return a.from - b.from;});
+
+        emailPeoples(people, _.map(edges, function(edge) { return edge.to; }));
 
         res.json({
             success: 'success!'
