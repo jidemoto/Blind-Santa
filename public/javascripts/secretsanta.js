@@ -71,6 +71,63 @@
 
         return false;
     });
+
+    $('.santa-form').on('click', '.exclude-button', function() {
+        var $this = $(this),
+            inputGroup = $this.closest('.input-group'),
+            $modal = $('.modal'),
+            modalList = $modal.find('.list-group'),
+            number = Number(inputGroup.find('input[name^="name"]').attr('name').substring(4)),
+            excludes = inputGroup.find('input[name^="exclude"]').val().split(','),
+            people = $('input[name^="name"]').map(function() {
+                var $name = $(this);
+                return [[Number($name.attr('name').substring(4)), $name.val()]];
+            }).get(),
+            i;
+
+        //Convert the excludes array from Strings to Numbers
+        for(i = 0; i < excludes.length; i++) {
+            excludes[i] = Number(excludes[i]);
+        }
+
+        modalList.empty();
+        for(i = 0; i < people.length; i++) {
+            var person = people[i],
+                current = person[0] === number,
+                excluded = excludes.indexOf(person[0]) != -1,
+                itemClass;
+
+            if(current || people.length == 2) {
+                itemClass = 'disabled';
+            } else if(excluded) {
+                itemClass = 'excluded';
+            } else {
+                itemClass = 'list-group-item-success';
+            }
+
+            modalList.append('<a href="#" class="list-group-item ' + itemClass + '" data-person="' + person[0] + '">' + person[1] + '</a>');
+        }
+
+        modalList.find('a:not(.disabled)').on('click', function() {
+            $(this).toggleClass('list-group-item-success').toggleClass('excluded');
+            if(modalList.find('a:not(.excluded)').size() == 1) {
+                $modal.find('.btn-primary').addClass('disabled');
+            } else {
+                $modal.find('.btn-primary').removeClass('disabled');
+            }
+        });
+
+        $modal.find('.btn-primary').off('click').on('click', function() {
+            var number = Number(modalList.find('a.disabled').attr('data-person')),
+                excluded = modalList.find('a.excluded').map(function() { return Number($(this).attr('data-person')); }).get().join();
+            $('input[name="exclude' + number + '"]').val(excluded);
+
+            $modal.modal('hide');
+        });
+
+        $modal.modal({});
+
+    });
 })();
 
 window.ParsleyValidator.addValidator('conditionally',

@@ -14,18 +14,26 @@ block content
         .row
             .col-lg-12.col-md-12.col-sm-12.col-xs-12
                 script(type='text/javascript') var RecaptchaOptions = { theme : 'clean', lang  : 'en' };
-                form(action='/santa', method='post', role='form', class='form-horizontal', data-parsley-validate)
-                    .form-group
+                form(action='/santa', method='post', role='form', class='form-horizontal santa-form', data-parsley-validate)
+                    .row.form-group
                         label(for='name1', class='control-label col-sm-2') Your Name
                         .col-sm-10
-                            input(id='name1',name='name1', type='text', class='form-control', placeholder='Name', required)
+                            .input-group
+                                input(type='hidden', name='exclude1', id='exclude1')
+                                input(id='name1',name='name1', type='text', class='form-control', placeholder='Name', required)
+                                span(class='input-group-btn')
+                                    button(class='btn btn-default exclude-button', type='button') Excludes...
                         label(for='email1', class='control-label col-sm-2') Your E-Mail
                         .col-sm-10
                             input(id='email1', name='email1', type='email',class='form-control', placeholder='E-mail Address', required)
-                    .form-group
+                    .row.form-group
                         label(for='name2', class='control-label col-sm-2') Name
                         .col-sm-10
-                            input(id='name2',name='name2', type='text', class='form-control', placeholder='Name', required)
+                            .input-group
+                                input(type='hidden', name='exclude2', id='exclude2')
+                                input(id='name2',name='name2', type='text', class='form-control', placeholder='Name', required)
+                                span(class='input-group-btn')
+                                    button(class='btn btn-default exclude-button', type='button') Excludes...
                         label(for='email2', class='control-label col-sm-2') E-mail
                         .col-sm-10
                             input(id='email2', name='email2', type='email',class='form-control', placeholder='E-mail Address', required)
@@ -33,6 +41,20 @@ block content
                     p(class='captcha') Finally, prove you're not a Christmas-ruining robot
                         != recaptcha_form
                     button(type='submit', class='btn btn-primary submit-button') MERRY CHRISTMAS
+    .modal.fade
+        .modal-dialog
+            .modal-content
+                .modal-header
+                    button(type='button', class='close', data-dismiss='modal')
+                        span(aria-hidden='true') &times;
+                        span.sr-only Close
+                    h4.modal-title Choose whom to exclude for this user...
+                .modal-body
+                    ul.list-group
+
+                .modal-footer
+                    button(type='button', class='btn btn-default' data-dismiss='modal') Close
+                    button(type='button', class='btn btn-primary') Save Exclusions
 
 block scripts
     script(type='text/javascript', src='javascripts/parsley.min.js')
