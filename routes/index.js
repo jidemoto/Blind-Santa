@@ -23,37 +23,24 @@ var express = require('express'),
             }
         });
     },
-
     jade = require('jade'),
     router = express.Router(),
-    emailPeoples = function(people, santas) {
-        var number;
-        for(number = 0; number < people.length; number++) {
-            console.log('Mapped ' + people[number].name + ' to ' + people[santas[number]].name);
-            ses.sendEmail({
-                Destination: {
-                    ToAddresses: [people[number].email]
-                },
-                Message: {
-                    Body: {
-                        Html: {
-                            Data: jade.renderFile('views/email.jade', {
-                                initiator: people[0],
-                                assignee: people[santas[number]],
-                                recipient: people[number]
-                            })
-                        }
-                    },
-                    Subject: {
-                        Data: 'Your Secret Santa assignment!'
-                    }
-                },
-                Source: 'TheBlindSanta@gmail.com'
-            }, function(err, data) {
-                if(err) console.log(err, err.stack);
-                else    console.log(data);
-            });
+    Solver = require('../lib/graphSolver').Solver,
+    emailer = require('../lib/emailer'),
+    emailPeoples = function(edges, initiator) {
+        var number,
+            failed = [];
+        console.log('Secret Santa initiated by ' + initiator.name);
+        for(number = 0; number < edges.length; number++) {
+            console.log('Mapped ' + edges[number].from.name + ' to ' + edges[number].to.name);
+            try {
+                emailer.email(edges[number].from, edges[number].to, initiator);
+            } catch (e) {
+                failed.push(edges[number]);
+            }
         }
+
+        return failed;
     };
 
 router.getValidParams = function(params) {
@@ -75,7 +62,11 @@ router.makePeopleList = function(params) {
                 id: number,
                 name: params['name' + number].trim(),
                 email: params['email' + number].trim(),
-                exclusions : _.has(params, 'exclude' + number) && typeof params['exclude' + number] !== 'undefined' ? params['exclude' + number].split(',') : []
+                exclusions : _.has(params, 'exclude' + number)
+                                && typeof params['exclude' + number] !== 'undefined'
+                                && params['exclude' + number].trim().length > 0
+                            ? _.map(params['exclude' + number].split(','), function(s) { return Number(s); })
+                            : []
             });
         }
     }
@@ -96,20 +87,10 @@ router.get('/', function(req, res) {
 
 
 router.post('/santa', recaptcha_check, function(req, res) {
-    var number,
-        valid = this.getValidParams(req.body),
-        people = this.makePeopleList(valid),
-        twoPersonCyclesAllowed = _.has(req.body, 'twoPersonCyclesAllowed') && people.length > 2
-            ? req.body['twoPersonCyclesAllowed'].toLowerCase() == 'true'
-            : true,
-        person,
-        assignee,
-        available = [],
+    var valid = router.getValidParams(req.body),
+        people = router.makePeopleList(valid),
         edges = [],
-        locallyAvailable,
-        localSanta;
-
-    people.sort(function(a, b) {return a.exclusions.length - b.exclusions.length});
+        failed;
 
     console.log(people);
     if(people.length < 2) {
@@ -118,46 +99,21 @@ router.post('/santa', recaptcha_check, function(req, res) {
         })
     } else {
         //Pick each person's santa
-        for(number = 1; number <= people.length; number++) {
-            available.push(number);
-        }
-        for(number = 0; number < people.length; number++) {
-            person = people[number];
-            locallyAvailable = available.slice(0, available.length);
-
-            //Remove the user's self from the available listing
-            if(locallyAvailable.indexOf(person.id) != -1) {
-                locallyAvailable.splice(locallyAvailable.indexOf(person.id), 1);
-            }
-
-            //Remove items from the available array that match exclusions
-            for(var i = 0; i < person.exclusions.length; i++) {
-                if(locallyAvailable.indexOf(person.exclusions[i]) != -1) {
-                    locallyAvailable.splice(locallyAvailable.indexOf(person.exclusions[i]), 1);
+        edges = new Solver(people).getRandomGraph();
+        failed = emailPeoples(edges, _.find(people, function(person) { return person.id === 1; }));
+        if(failed.length === 0) {
+            res.json({
+                success: 'success!'
+            });
+        } else {
+            res.status(500);
+            res.json({
+                failure: {
+                    failedSending: failed
                 }
-            }
-
-            if(locallyAvailable.length == 0) {
-                //TODO: Handle the error case where graph generation isn't possible
-            }
-
-            localSanta = _.random(locallyAvailable.length - 1);
-            assignee = available.splice(available.indexOf(locallyAvailable[localSanta]), 1);
-
-            edges.push({
-                from: person.id,
-                to: assignee[0]
             });
         }
 
-        people.sort(function(a, b) { return a.id - b.id;});
-        edges.sort(function(a, b) { return a.from - b.from;});
-
-        emailPeoples(people, _.map(edges, function(edge) { return edge.to; }));
-
-        res.json({
-            success: 'success!'
-        });
     }
 });
 
