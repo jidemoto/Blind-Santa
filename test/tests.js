@@ -155,7 +155,8 @@ exports.testComplexGraph = function (test) {
 exports.testImpossibleGraph = function (test) {
     var people = [
         {id: 1, exclusions: [2]},
-        {id: 2, exclusions: [1]}
+        {id: 2, exclusions: [1]},
+        {id: 3, exclusions: []}
     ];
 
     try {
