@@ -76,7 +76,7 @@ router.makePeopleList = function(params) {
 
 /* GET home page. */
 router.get('/', function(req, res) {
-    var recaptcha = new Recaptcha(RECAPTCHA_PUBLIC_KEY, RECAPTCHA_PRIVATE_KEY);
+    var recaptcha = new Recaptcha(RECAPTCHA_PUBLIC_KEY, RECAPTCHA_PRIVATE_KEY, null, true);
 
     res.render('index', {
         title: 'Blind Santa',
