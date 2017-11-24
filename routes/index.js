@@ -99,13 +99,22 @@ router.post('/santa', recaptcha_check, function(req, res) {
         })
     } else {
         //Pick each person's santa
-        edges = new Solver(people).getRandomGraph();
+        try {
+            edges = new Solver(people).getRandomGraph();
+        } catch (error) {
+            console.error("Failure: " + error);
+        }
+
         failed = emailPeoples(edges, _.find(people, function(person) { return person.id === 1; }));
         if(failed.length === 0) {
             res.json({
                 success: 'success!'
             });
         } else {
+            console.log("Failure to send emails to the following:");
+            for(var i = 0; i < failed.length; i++) {
+                console.log(failed[i]);
+            }
             res.status(500);
             res.json({
                 failure: {
