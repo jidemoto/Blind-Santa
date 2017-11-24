@@ -103,6 +103,7 @@ router.post('/santa', recaptcha_check, function(req, res) {
             edges = new Solver(people).getRandomGraph();
         } catch (error) {
             console.error("Failure: " + error);
+            throw error;
         }
 
         failed = emailPeoples(edges, _.find(people, function(person) { return person.id === 1; }));
