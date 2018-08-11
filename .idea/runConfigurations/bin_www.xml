@@ -1,13 +1,25 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="bin\www" type="NodeJSConfigurationType" factoryName="Node.js" path-to-node="C:/Program Files/nodejs/node" path-to-js-file="bin/www" working-dir="$PROJECT_DIR$">
     <envs>
+      <env name="RECAPTCHA_PRIVATE_KEY" value="6LeiEv0SAAAAAFgGmmnPvqrwqiPSk2RNdWJicWK9" />
+      <env name="RECAPTCHA_PUBLIC_KEY" value="6LeiEv0SAAAAAFK38eNCP37fg5fFY6rEXGQgHe0L" />
       <env name="DEBUG" value="BlindSanta" />
+      <env name="SENDING_EMAIL" value="TheBlindSanta@gmail.com" />
+      <env name="MAILGUN_API_KEY" value="key-15977e7dc275c9ebdd605138f2bbda97" />
+      <env name="MAILGUN_DOMAIN" value="james.idemo.to" />
     </envs>
     <browser url="http://localhost:3000/" />
+    <EXTENSION ID="com.jetbrains.nodejs.run.NodeJSStartBrowserRunConfigurationExtension">
+      <browser url="http://localhost:3000/" />
+    </EXTENSION>
+    <RunnerSettings RunnerId="Basic" />
     <RunnerSettings RunnerId="NodeJS.debug" />
     <RunnerSettings RunnerId="NodeJS.run" />
+    <RunnerSettings RunnerId="debuggableProgram" />
+    <ConfigurationWrapper RunnerId="Basic" />
     <ConfigurationWrapper RunnerId="NodeJS.debug" />
     <ConfigurationWrapper RunnerId="NodeJS.run" />
+    <ConfigurationWrapper RunnerId="debuggableProgram" />
     <method />
   </configuration>
 </component>
